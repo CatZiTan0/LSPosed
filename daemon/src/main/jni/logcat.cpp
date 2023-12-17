@@ -132,7 +132,33 @@ private:
 };
 
 size_t Logcat::PrintLogLine(const AndroidLogEntry &entry, FILE *out) {
-    return 0;
+    if (!out) return 0;
+    constexpr static size_t kMaxTimeBuff = 64;
+    struct tm tm{};
+    std::array<char, kMaxTimeBuff> time_buff{};
+
+    auto now = entry.tv_sec;
+    auto nsec = entry.tv_nsec;
+    auto message_len = entry.messageLen;
+    const auto *message = entry.message;
+    if (now < 0) {
+        nsec = NS_PER_SEC - nsec;
+    }
+    if (message_len >= 1 && message[message_len - 1] == '\n') {
+        --message_len;
+    }
+    localtime_r(&now, &tm);
+    strftime(time_buff.data(), time_buff.size(), "%Y-%m-%dT%H:%M:%S", &tm);
+    int len = fprintf(out, "[ %s.%03ld %8d:%6d:%6d %c/%-15.*s ] %.*s\n",
+                      time_buff.data(),
+                      nsec / MS_PER_NSEC,
+                      entry.uid, entry.pid, entry.tid,
+                      kLogChar[entry.priority], static_cast<int>(entry.tagLen),
+                      entry.tag, static_cast<int>(message_len), message);
+    fflush(out);
+    // trigger overflow when failed to generate a new fd
+    if (len <= 0) len = kMaxLogSize;
+    return static_cast<size_t>(len);
 }
 
 void Logcat::RefreshFd(bool is_verbose) {
@@ -167,6 +193,20 @@ inline void Logcat::Log(std::string_view str) {
 }
 
 void Logcat::OnCrash(int err) {
+    using namespace std::string_literals;
+    constexpr size_t max_restart_logd_wait = 1U << 10;
+    static size_t kLogdCrashCount = 0;
+    static size_t kLogdRestartWait = 1 << 3;
+    if (++kLogdCrashCount >= kLogdRestartWait) {
+        __system_property_set("ctl.restart", "logd");
+        if (kLogdRestartWait < max_restart_logd_wait) {
+            kLogdRestartWait <<= 1;
+        } else {
+            kLogdCrashCount = 0;
+        }
+    }
+
+    std::this_thread::sleep_for(1s);
 }
 
 void Logcat::ProcessBuffer(struct log_msg *buf) {

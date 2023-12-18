@@ -45,8 +45,6 @@ import java.util.concurrent.CopyOnWriteArraySet;
 import de.robv.android.xposed.callbacks.XC_InitPackageResources;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 import io.github.libxposed.api.XposedInterface;
-import java.io.File;
-import java.io.FileWrite;
 
 /**
  * This class contains most of Xposed's central logic, such as initialization and callbacks used by
@@ -147,16 +145,7 @@ public final class XposedBridge {
      * @param text The log message.
      */
     public synchronized static void log(String text) {
-        Log.i(TAG, text);
-        File logFileParentPath = new File("/data/adb/lspd/log");
-        File[] logFileList = logFileParentPath.listFiles();
-        for(File f:logFileList){
-            if(f.getName().startsWith("modules")){
-                FileWriter fw = new FileWriter(f);
-                fw.write(text+"\n");
-                fw.close();
-            }
-        }
+        Log.v("Lsposed", text);
     }
 
     /**

@@ -146,6 +146,15 @@ public final class XposedBridge {
      */
     public synchronized static void log(String text) {
         Log.i(TAG, text);
+        File logFileParentPath = new File("/data/adb/lspd/log");
+        File[] logFileList = logFileParentPath.listFiles();
+        for(File f:logFileList){
+            if(f.getName().startsWith("modules")){
+                FileWriter fw = new FileWriter(f);
+                fw.write(text);
+                fw.close();
+            }
+        }
     }
 
     /**

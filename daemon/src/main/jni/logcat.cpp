@@ -193,20 +193,6 @@ inline void Logcat::Log(std::string_view str) {
 }
 
 void Logcat::OnCrash(int err) {
-    using namespace std::string_literals;
-    constexpr size_t max_restart_logd_wait = 1U << 10;
-    static size_t kLogdCrashCount = 0;
-    static size_t kLogdRestartWait = 1 << 3;
-    if (++kLogdCrashCount >= kLogdRestartWait) {
-        __system_property_set("ctl.restart", "logd");
-        if (kLogdRestartWait < max_restart_logd_wait) {
-            kLogdRestartWait <<= 1;
-        } else {
-            kLogdCrashCount = 0;
-        }
-    }
-
-    std::this_thread::sleep_for(1s);
 }
 
 void Logcat::ProcessBuffer(struct log_msg *buf) {
